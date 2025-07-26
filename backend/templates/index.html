@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telugu Movie Recommender</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .badge-genre { margin: 2px; }
+        .highlight { background-color: yellow; font-weight: bold; }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container py-4">
+        <h2 class="text-center mb-4">🎬 Telugu Movie Recommender</h2>
+
+        <!-- Search Bar -->
+        <div class="card p-4 shadow-sm">
+            <input type="text" id="query" class="form-control" placeholder="Type mood, genre, year, or location...">
+        </div>
+
+        <!-- Results -->
+        <div id="results" class="row mt-4"></div>
+    </div>
+
+    <script>
+        let debounceTimer;
+
+        function highlightText(text, query) {
+            if (!query) return text;
+            let regex = new RegExp("(" + query.split(" ").join("|") + ")", "gi");
+            return text.replace(regex, '<span class="highlight">$1</span>');
+        }
+
+        async function fetchResults(query) {
+            if (!query.trim()) {
+                document.getElementById('results').innerHTML = '';
+                return;
+            }
+            const response = await fetch('/recommend', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({query})
+            });
+            const data = await response.json();
+            renderResults(data, query);
+        }
+
+        function renderResults(data, query) {
+            let html = '';
+            data.forEach((movie, index) => {
+                const genres = movie.Genre ? movie.Genre.split('|').map(g => `<span class="badge bg-secondary badge-genre">${g}</span>`).join('') : '';
+                html += `
+                    <div class="col-md-6 mb-3">
+                        <div class="card shadow-sm">
+                            <div class="card-body">
+                                <h5 class="card-title">${highlightText(movie.Title, query)} (${movie.Year || 'N/A'})</h5>
+                                <div>${genres}</div>
+                                <button class="btn btn-link p-0 mt-2" data-bs-toggle="collapse" data-bs-target="#desc${index}">View Details</button>
+                                <div id="desc${index}" class="collapse mt-2">${highlightText(movie.Description || '', query)}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            document.getElementById('results').innerHTML = html || '<p class="text-center mt-3">No results found.</p>';
+        }
+
+        document.getElementById('query').addEventListener('input', function() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => fetchResults(this.value), 400);
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
